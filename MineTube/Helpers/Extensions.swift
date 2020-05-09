@@ -26,3 +26,39 @@ extension UIView {
         addConstraints(NSLayoutConstraint.constraints(withVisualFormat: format, options: NSLayoutConstraint.FormatOptions(), metrics: nil, views: viewsDictionary))
     }
 }
+
+let imageCache = NSCache<AnyObject, AnyObject>()
+
+class CustomImageView: UIImageView {
+    
+    var imageUrlString: String?
+    
+    func loadImageUsingUrl(stringUrl: String) {
+        
+        imageUrlString = stringUrl
+        let url = URL(string: stringUrl)
+        image = nil
+        
+        if let imageFromCache = imageCache.object(forKey: stringUrl as AnyObject) as? UIImage {
+            self.image = imageFromCache
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url!) { (data, response, error) in
+            if error != nil {
+                print(error as Any)
+                return
+            }
+            
+            DispatchQueue.main.async {
+                let imageToCache = UIImage(data: data!)
+                
+                if self.imageUrlString == stringUrl {
+                    self.image = imageToCache
+                }
+                imageCache.setObject(imageToCache!, forKey: stringUrl as AnyObject)                
+            }
+            
+        }.resume()
+    }
+}
