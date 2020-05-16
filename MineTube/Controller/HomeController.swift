@@ -33,13 +33,14 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
 //        return [perahuKertasVideo, tahuDiri]
 //    }()
     
-    var videos: [Video]?
+    let pageTitle = ["Home", "Trending", "Subscription", "Account"]
+    let trendingId = "trendingId"
+    let subscriptId = "subscriptionId"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view.
         //navigationItem.title = "Home"
-        fetchVideos()
 
         navigationController?.navigationBar.isTranslucent = false
         let titleLabel = UILabel(frame: CGRect(x: 0, y: 0, width: view.frame.width - 32, height: view.frame.height))
@@ -57,13 +58,28 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
     
     //Helper method
     private func setupElement() {
-        collectionView.register(VideoCell.self, forCellWithReuseIdentifier: "cellId")
+        setupCollectionView()
+        //collectionView.register(VideoCell.self, forCellWithReuseIdentifier: "cellId")
+        collectionView.register(FeedCell.self, forCellWithReuseIdentifier: "cellId2")
         collectionView.contentInset = UIEdgeInsets(top: 50, left: 0, bottom: 0, right: 0)
         collectionView.scrollIndicatorInsets = UIEdgeInsets(top: 50, left: 0, bottom: 0, right: 0)
+        
+        collectionView.register(TrendingCell.self, forCellWithReuseIdentifier: trendingId)
+        collectionView.register(SubscriptionCell.self, forCellWithReuseIdentifier: subscriptId)
     }
     
-    let menuBar: MenuBar = {
+    func setupCollectionView() {
+        if let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout {
+            flowLayout.scrollDirection = .horizontal
+            flowLayout.minimumLineSpacing = 0
+        }
+        collectionView.isPagingEnabled = true
+        
+    }
+    
+    lazy var menuBar: MenuBar = {
         let mb = MenuBar()
+        mb.homeController = self
         return mb
     }()
     
@@ -90,6 +106,12 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
         navigationItem.rightBarButtonItems = [moreBarButtonItem, searchBarButtonItem]
     }
     
+    private func setTitleForIndex(index: Int) {
+        if let titleLabel = navigationItem.titleView as? UILabel {
+            titleLabel.text = "  \(pageTitle[Int(index)])"
+        }
+    }
+    
     lazy var setting: SettingLauncher = {
         let setting = SettingLauncher()
         setting.homeVC = self
@@ -104,6 +126,13 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
         print("search")
     }
     
+    func scrollToMenuIndex(menuIndex: Int) {
+        let indexPath = IndexPath(row: menuIndex, section: 0)
+        collectionView.scrollToItem(at: indexPath, at: .init(), animated: true)
+        
+        setTitleForIndex(index: menuIndex)
+    }
+    
     func showControllerForSetting(setting: Setting) {
         let dummySettingVC = UIViewController()
         dummySettingVC.navigationItem.title = setting.name.rawValue
@@ -112,37 +141,49 @@ class HomeController: UICollectionViewController, UICollectionViewDelegateFlowLa
         navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor: UIColor.white]
         navigationController?.pushViewController(dummySettingVC, animated: true)
     }
-
+    
+    //MARK:- Set Scroll View
+    override func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        let index = targetContentOffset.move().x / view.frame.width
+        let indexPath = IndexPath(item: Int(index), section: 0)
+        
+        menuBar.collectionView.selectItem(at: indexPath, animated: true, scrollPosition: .init())
+        
+        //change title
+        setTitleForIndex(index: Int(index))
+    }
+    
+    //MARK:- Set Collection view
+    override func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        menuBar.horizontalBarLeftAnchorConstrain?.constant = scrollView.contentOffset.x / 4
+    }
+    
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return videos?.count ?? 0
+        return 4
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cellId", for: indexPath) as! VideoCell
-        cell.video = videos?[indexPath.item]
+        let identifier: String
+        
+        if indexPath.item == 1 {
+            identifier = trendingId
+        } else if indexPath.item == 2 {
+            identifier = subscriptId
+        } else {
+            identifier = "cellId2"
+        }
+        
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: identifier, for: indexPath)
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let height = (view.frame.width - 16 - 16) * 9 / 16 // 9:16 is ratio HD
-        return CGSize(width: view.frame.width, height: height + 16 + 88)
+        return CGSize(width: view.frame.width, height: view.frame.height - 50)
     }
+
     
-    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
-        return 0
-    }
-        
 }
 
-//MARK:- API IMPLEMENTATION
-extension HomeController {
-    func fetchVideos() {
-        ApiService.sharedInstance.fetchVideos { (vid) in
-            self.videos = vid
-            self.collectionView.reloadData()
-        }
-    }
-}
 
 
 

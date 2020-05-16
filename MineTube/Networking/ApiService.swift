@@ -11,9 +11,24 @@ import UIKit
 class ApiService: NSObject {
     
     static let sharedInstance = ApiService()
+    let baseURL = "https://s3-us-west-2.amazonaws.com/youtubeassets"
     
     func fetchVideos(completion: @escaping ([Video]) -> ()) {
-        let url = URL(string: "https://s3-us-west-2.amazonaws.com/youtubeassets/home.json")
+        fetchFeedForUrlString("\(baseURL)/home.json") { (videos) in
+            completion(videos)
+        }
+    }
+    
+    func fetchTrendingVideos(completion: @escaping ([Video]) -> ()) {
+        fetchFeedForUrlString("\(baseURL)/trending.json", completion: completion)
+    }
+    
+    func fetchSubscriptionVideos(completion: @escaping ([Video]) -> ()) {
+        fetchFeedForUrlString("\(baseURL)/subscriptions.json", completion: completion)
+    }
+    
+    func fetchFeedForUrlString(_ url: String, completion: @escaping ([Video]) -> ()) {
+        let url = URL(string: url)
         URLSession.shared.dataTask(with: url!) { (data, response, error) in
             if error != nil {
                 print(error as Any)
@@ -30,14 +45,17 @@ class ApiService: NSObject {
                 for dictionary in json as! [[String: AnyObject]] {
                     let video = Video()
                     video.title = dictionary["title"] as? String
-                    video.thumbnailImage = dictionary["thumbnail_image_name"] as? String
-                    video.numberOfView = dictionary["number_of_views"] as? NSNumber
+                    video.thumbnail_image_name = dictionary["thumbnail_image_name"] as? String
+                    video.number_of_views = dictionary["number_of_views"] as? NSNumber
+                    
+                    //video.setValuesForKeys(dictionary)
                     
                     let channelDictionary = dictionary["channel"] as! [String: AnyObject]
                     
                     let channel = Channel()
+                    //channel.setValuesForKeys(channelDictionary)
                     channel.name = channelDictionary["name"] as? String
-                    channel.profileImage = channelDictionary["profile_image_name"] as? String
+                    channel.profile_image_name = channelDictionary["profile_image_name"] as? String
                     
                     video.channel = channel
                     videos.append(video)
